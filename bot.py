@@ -9,7 +9,7 @@ PROXY_URL = os.getenv("PROXY_URL")
 def main():
     builder = Application.builder().token(TOKEN)
     if PROXY_URL:
-        builder = builder.proxy_url(PROXY_URL)
+        builder = builder.proxy(PROXY_URL)
     app = builder.build()
 
     async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
