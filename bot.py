@@ -1,8 +1,8 @@
 import os
 import csv
-import asyncio
 import io
-from datetime import datetime, time
+import asyncio
+from datetime import datetime
 
 import aiosqlite
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -28,32 +28,29 @@ DB_PATH = "bot_data.db"
 # ------------------------------------------------------------
 async def init_db():
     async with aiosqlite.connect(DB_PATH) as db:
-        # Таблица еженедельного расписания
         await db.execute("""
             CREATE TABLE IF NOT EXISTS schedule (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id INTEGER,
-                day_of_week TEXT,        -- номер дня (0=пн, 6=вс) или текст
-                time TEXT,               -- ЧЧ:ММ
+                day_of_week TEXT,
+                time TEXT,
                 subject TEXT,
                 info TEXT DEFAULT ''
             )
         """)
-        # Таблица разовых событий (аналог reminders, но с датой)
         await db.execute("""
             CREATE TABLE IF NOT EXISTS events (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id INTEGER,
                 chat_id INTEGER,
-                event_date TEXT,         -- ГГГГ-ММ-ДД
-                time TEXT,               -- ЧЧ:ММ
+                event_date TEXT,
+                time TEXT,
                 text TEXT,
                 notified INTEGER DEFAULT 0
             )
         """)
         await db.commit()
 
-# --- Методы для расписания ---
 async def clear_schedule(user_id: int):
     async with aiosqlite.connect(DB_PATH) as db:
         await db.execute("DELETE FROM schedule WHERE user_id = ?", (user_id,))
@@ -68,7 +65,6 @@ async def insert_schedule(user_id: int, day: str, time_val: str, subject: str, i
         await db.commit()
 
 async def get_schedule_for_day(user_id: int, day_of_week: str):
-    """Возвращает все пары для указанного дня (day_of_week — название дня или число)."""
     async with aiosqlite.connect(DB_PATH) as db:
         cursor = await db.execute(
             "SELECT time, subject, info FROM schedule WHERE user_id = ? AND day_of_week = ? ORDER BY time",
@@ -76,16 +72,7 @@ async def get_schedule_for_day(user_id: int, day_of_week: str):
         )
         return await cursor.fetchall()
 
-async def get_all_schedule_days(user_id: int):
-    """Возвращает список дней, для которых есть занятия."""
-    async with aiosqlite.connect(DB_PATH) as db:
-        cursor = await db.execute(
-            "SELECT DISTINCT day_of_week FROM schedule WHERE user_id = ?",
-            (user_id,)
-        )
-        return [row[0] for row in await cursor.fetchall()]
-
-# --- Методы для разовых событий (как у reminders) ---
+# --- Методы для разовых событий ---
 async def add_event(user_id, chat_id, event_date, event_time, text):
     async with aiosqlite.connect(DB_PATH) as db:
         await db.execute(
@@ -132,12 +119,10 @@ DAYS_MAP = {
 }
 
 def normalize_day(raw: str) -> str:
-    """Приводим день недели к одному из стандартных названий."""
     raw_lower = raw.strip().lower()
     for key, name in DAYS_MAP.items():
-        if key.startswith(raw_lower[:3]):  # "пн" -> "понедельник"
+        if key.startswith(raw_lower[:3]):
             return name
-    # fallback: возвращаем исходную строку, если не нашли
     return raw.strip().capitalize()
 
 # ------------------------------------------------------------
@@ -173,11 +158,8 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
     await update.message.reply_text(text)
 
-# --- Расписание ---
 async def today(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
-    day = datetime.now().strftime("%A")  # английское название дня
-    # Переведём на русский
     ru_days = {
         "Monday": "Понедельник",
         "Tuesday": "Вторник",
@@ -187,7 +169,7 @@ async def today(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "Saturday": "Суббота",
         "Sunday": "Воскресенье",
     }
-    day_ru = ru_days.get(day, day)
+    day_ru = ru_days.get(datetime.now().strftime("%A"), "Unknown")
     schedule = await get_schedule_for_day(user_id, day_ru)
     if not schedule:
         await update.message.reply_text("На сегодня занятий нет 🎉")
@@ -199,11 +181,9 @@ async def today(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("\n".join(lines), parse_mode="Markdown")
 
 async def tomorrow(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    # Аналогично, но +1 день
     from datetime import timedelta
     user_id = update.effective_user.id
     tomorrow_date = datetime.now() + timedelta(days=1)
-    day = tomorrow_date.strftime("%A")
     ru_days = {
         "Monday": "Понедельник",
         "Tuesday": "Вторник",
@@ -213,7 +193,7 @@ async def tomorrow(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "Saturday": "Суббота",
         "Sunday": "Воскресенье",
     }
-    day_ru = ru_days.get(day, day)
+    day_ru = ru_days.get(tomorrow_date.strftime("%A"), "Unknown")
     schedule = await get_schedule_for_day(user_id, day_ru)
     if not schedule:
         await update.message.reply_text("На завтра занятий нет 🎉")
@@ -245,7 +225,6 @@ async def clear_schedule_command(update: Update, context: ContextTypes.DEFAULT_T
     await clear_schedule(user_id)
     await update.message.reply_text("✅ Расписание очищено.")
 
-# --- Загрузка CSV ---
 async def upload_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Отправьте CSV-файл с расписанием.")
 
@@ -257,18 +236,15 @@ async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     file = await doc.get_file()
-    # Скачиваем содержимое как строку
     file_bytes = await file.download_as_bytearray()
     file_text = file_bytes.decode("utf-8")
 
-    # Парсим CSV
     reader = csv.DictReader(io.StringIO(file_text))
     required = {"day", "time", "subject"}
     if not required.issubset(reader.fieldnames):
         await update.message.reply_text("❌ В файле должны быть колонки: day, time, subject")
         return
 
-    # Очищаем старую сетку
     await clear_schedule(user_id)
     count = 0
     for row in reader:
@@ -276,16 +252,13 @@ async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE):
         time_val = row["time"]
         subject = row["subject"]
         info = row.get("info", "")
-        # Нормализуем день
         day_norm = normalize_day(day_raw)
         await insert_schedule(user_id, day_norm, time_val, subject, info)
         count += 1
 
     await update.message.reply_text(f"✅ Загружено {count} записей. Ваше расписание обновлено!\nПроверьте: /week")
 
-# --- Разовые события ---
 async def addevent_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Формат: /addevent 2026-06-01 15:00 Встреча с деканом"""
     user = update.effective_user
     chat_id = update.effective_chat.id
     args = context.args
@@ -298,7 +271,6 @@ async def addevent_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     date_str = args[0]
     time_str = args[1]
     text = " ".join(args[2:])
-    # Простая валидация
     try:
         datetime.strptime(date_str, "%Y-%m-%d")
         datetime.strptime(time_str, "%H:%M")
@@ -321,10 +293,9 @@ async def myevents_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("\n".join(lines))
 
 # ------------------------------------------------------------
-# Фоновые задачи (планировщик)
+# Фоновые задачи
 # ------------------------------------------------------------
 async def daily_schedule_job(app: Application):
-    """Рассылка расписания на сегодня всем пользователям."""
     today_ru = {
         "Monday": "Понедельник",
         "Tuesday": "Вторник",
@@ -336,7 +307,6 @@ async def daily_schedule_job(app: Application):
     }
     day_ru = today_ru[datetime.now().strftime("%A")]
     async with aiosqlite.connect(DB_PATH) as db:
-        # Получаем всех уникальных пользователей, у которых есть расписание
         cursor = await db.execute("SELECT DISTINCT user_id FROM schedule")
         users = [row[0] for row in await cursor.fetchall()]
     for user_id in users:
@@ -357,7 +327,6 @@ async def daily_schedule_job(app: Application):
             print(f"Не удалось отправить расписание пользователю {user_id}: {e}")
 
 async def check_events_job(app: Application):
-    """Проверка разовых событий (каждые 60 секунд)."""
     due = await get_due_events()
     for ev_id, chat_id, text in due:
         try:
@@ -367,17 +336,22 @@ async def check_events_job(app: Application):
             print(f"Ошибка при отправке события {ev_id}: {e}")
 
 # ------------------------------------------------------------
-# Главная функция
+# Главная функция (синхронная, создаёт event loop)
 # ------------------------------------------------------------
-async def main():
-    await init_db()
+def main():
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
 
+    # Инициализация БД
+    loop.run_until_complete(init_db())
+
+    # Сборка приложения
     builder = Application.builder().token(TOKEN)
     if PROXY_URL:
         builder = builder.proxy(PROXY_URL)
     app = builder.build()
 
-    # Обработчики
+    # Регистрация обработчиков
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("help", help_command))
     app.add_handler(CommandHandler("today", today))
@@ -387,22 +361,18 @@ async def main():
     app.add_handler(CommandHandler("upload", upload_command))
     app.add_handler(CommandHandler("addevent", addevent_command))
     app.add_handler(CommandHandler("myevents", myevents_command))
-
-    # Приём документов (CSV) – можно и без команды /upload, просто кинуть файл
     app.add_handler(MessageHandler(filters.Document.MimeType("text/csv"), handle_document))
-    # На случай, если mime-тип не распознан, добавим фильтр по расширению (но лучше полагаться на mime)
     app.add_handler(MessageHandler(filters.Document.FileExtension("csv"), handle_document))
 
-    # Планировщик
-    scheduler = AsyncIOScheduler()
-    # Ежедневно в 07:00 по времени сервера (UTC, можно настроить)
+    # Планировщик в том же event loop
+    scheduler = AsyncIOScheduler(event_loop=loop)
     scheduler.add_job(daily_schedule_job, "cron", hour=7, minute=0, args=[app])
-    # Проверка событий каждые 60 секунд
     scheduler.add_job(check_events_job, "interval", seconds=60, args=[app])
     scheduler.start()
 
     print("Бот с расписанием запущен...")
-    await app.run_polling()
+    # Запуск опроса – будет использовать текущий event loop
+    app.run_polling()
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()
