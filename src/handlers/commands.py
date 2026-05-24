@@ -4,8 +4,8 @@ from telegram.ext import (
     ContextTypes,
 )
 from datetime import datetime
-from database import get_schedule_for_day, clear_schedule, add_event, get_user_events
-from src.utils import HELP_MENU, START_MENU
+from src.database import get_schedule_for_day, clear_schedule, add_event, get_user_events
+from src.utils import HELP_MENU, RU_DAYS_MAP, START_MENU
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(START_MENU)
@@ -15,16 +15,8 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def today(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
-    ru_days = {
-        "Monday": "Понедельник",
-        "Tuesday": "Вторник",
-        "Wednesday": "Среда",
-        "Thursday": "Четверг",
-        "Friday": "Пятница",
-        "Saturday": "Суббота",
-        "Sunday": "Воскресенье",
-    }
-    day_ru = ru_days.get(datetime.now().strftime("%A"), "Unknown")
+    
+    day_ru = RU_DAYS_MAP.get(datetime.now().strftime("%A"), "Unknown")
     schedule = await get_schedule_for_day(user_id, day_ru)
     if not schedule:
         await update.message.reply_text("На сегодня занятий нет 🎉")
@@ -39,16 +31,8 @@ async def tomorrow(update: Update, context: ContextTypes.DEFAULT_TYPE):
     from datetime import timedelta
     user_id = update.effective_user.id
     tomorrow_date = datetime.now() + timedelta(days=1)
-    ru_days = {
-        "Monday": "Понедельник",
-        "Tuesday": "Вторник",
-        "Wednesday": "Среда",
-        "Thursday": "Четверг",
-        "Friday": "Пятница",
-        "Saturday": "Суббота",
-        "Sunday": "Воскресенье",
-    }
-    day_ru = ru_days.get(tomorrow_date.strftime("%A"), "Unknown")
+
+    day_ru = RU_DAYS_MAP.get(tomorrow_date.strftime("%A"), "Unknown")
     schedule = await get_schedule_for_day(user_id, day_ru)
     if not schedule:
         await update.message.reply_text("На завтра занятий нет 🎉")
