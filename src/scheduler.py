@@ -5,7 +5,7 @@ from telegram.ext import (
 )
 from datetime import datetime
 from src.database import get_schedule_for_day, get_due_events, mark_event_notified
-from config import DB_PATH
+from src.config import DB_PATH
 
 async def daily_schedule_job(app: Application):
     today_ru = {
