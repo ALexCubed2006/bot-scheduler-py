@@ -1,5 +1,5 @@
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from handlers.commands import daily_schedule_job, check_events_job 
+from src.handlers.commands import daily_schedule_job, check_events_job 
 
 def start_scheduler(loop, app):
     scheduler = AsyncIOScheduler(event_loop=loop)
