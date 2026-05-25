@@ -1,11 +1,11 @@
 DAYS_MAP = {
-    "понедельник": "Понедельник",
-    "вторник": "Вторник",
-    "среда": "Среда",
-    "четверг": "Четверг",
-    "пятница": "Пятница",
-    "суббота": "Суббота",
-    "воскресенье": "Воскресенье",
+    "пн": "Понедельник",
+    "вт": "Вторник",
+    "ср": "Среда",
+    "чт": "Четверг",
+    "пт": "Пятница",
+    "сб": "Суббота",
+    "вс": "Воскресенье",
 }
 
 RU_DAYS_MAP = {
@@ -47,7 +47,8 @@ HELP_MENU = (
 
 def normalize_day(raw: str) -> str:
     raw_lower = raw.strip().lower()
-    for key, name in DAYS_MAP.items():
-        if key.startswith(raw_lower[:3]):
-            return name
+    for prefix, full_name in DAYS_MAP.items():
+        if raw_lower.startswith(prefix):
+            return full_name
+
     return raw.strip().capitalize()
