@@ -1,7 +1,5 @@
 import pytest
 from src.database import init_db, add_event, get_user_events
-import aiosqlite
-import os
 
 @pytest.mark.asyncio
 async def test_add_and_retrieve_event():

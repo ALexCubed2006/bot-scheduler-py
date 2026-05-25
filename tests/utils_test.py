@@ -1,4 +1,3 @@
-import pytest
 from src.utils import normalize_day
 
 def test_normalize_day():
