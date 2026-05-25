@@ -1,3 +1,5 @@
 python-telegram-bot[socks]
 apscheduler
 aiosqlite
+pytest
+pytest-asyncio
