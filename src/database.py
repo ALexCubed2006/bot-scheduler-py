@@ -1,5 +1,4 @@
 import aiosqlite
-from src.config import DB_PATH
 from datetime import datetime
 from . import config
 
