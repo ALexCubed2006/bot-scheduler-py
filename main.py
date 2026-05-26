@@ -20,8 +20,15 @@ def main():
 
     start_scheduler(loop, app)
 
-    print("started")
-    app.run_polling()
+    print("bot started")
+
+
+    app.run_polling(
+        bootstrap_retries=10,        # количество повторных попыток при старте
+        read_timeout=30,            # таймаут на чтение (сек)
+        connect_timeout=30,         # таймаут на соединение (сек)
+        pool_timeout=30             # таймаут ожидания соединения из пула
+    )
 
 if __name__ == "__main__":
     main()
