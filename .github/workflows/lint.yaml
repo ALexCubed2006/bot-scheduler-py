@@ -28,3 +28,28 @@ jobs:
         uses: chartboost/ruff-action@v1
         with:
           args: check
+          
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code (включая ansible/)
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Ansible
+        run: pip install ansible
+
+      - name: Setup SSH key
+        uses: webfactory/ssh-agent@v0.9.1
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Run Ansible playbook
+        env:
+          ANSIBLE_HOST_KEY_CHECKING: "false"
+        run: |
+          ansible-playbook -i ansible/inventory.ini ansible/deploy.yml

@@ -1,0 +1,24 @@
+- name: Deploy Telegram Bot
+  hosts: all
+  gather_facts: no
+  tasks:
+    - name: Pull latest code
+      git:
+        repo: "https://github.com/ALexCubed2006/bot-scheduler-py.git"
+        dest: /usr/local/bot-scheduler-py
+        version: main
+        force: yes
+      become: no
+
+    - name: Install Python dependencies
+      pip:
+        requirements: /usr/local/bot-scheduler-py/requirements.txt
+        virtualenv: /usr/local/bot-scheduler-py/venv
+      become: no
+
+    - name: Restart bot service
+      systemd:
+        name: tg-scheduler-bot
+        state: restarted
+        daemon_reload: yes
+      become: yes
