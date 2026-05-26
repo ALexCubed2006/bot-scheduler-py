@@ -28,11 +28,11 @@ jobs:
         uses: chartboost/ruff-action@v1
         with:
           args: check
-          
+
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code (включая ansible/)
+      - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Setup Python
@@ -51,5 +51,6 @@ jobs:
       - name: Run Ansible playbook
         env:
           ANSIBLE_HOST_KEY_CHECKING: "false"
+          ANSIBLE_BECOME_PASSWORD: ${{ secrets.VPS_BECOME_PASSWORD }}
         run: |
-          ansible-playbook -i ansible/inventory.ini ansible/deploy.yml
+          ansible-playbook -i ansible/inventory.yaml ansible/deploy.yaml --become

@@ -17,7 +17,7 @@
       become: no
 
     - name: Restart bot service
-      systemd:
+      ansible.builtin.systemd:
         name: tg-scheduler-bot
         state: restarted
         daemon_reload: yes
