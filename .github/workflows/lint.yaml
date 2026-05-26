@@ -32,7 +32,7 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     needs: [ lint ]
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -53,6 +53,7 @@ jobs:
       - name: Run Ansible playbook
         env:
           ANSIBLE_HOST_KEY_CHECKING: "false"
-          ANSIBLE_BECOME_PASSWORD: ${{ secrets.VPS_BECOME_PASSWORD }}
         run: |
-          ansible-playbook -i ansible/inventory.yaml ansible/deploy.playbook.yaml --become
+          ansible-playbook -i ansible/inventory.yaml ansible/deploy.playbook.yaml \
+          --become \
+          -e "ansible_become_password=${{ secrets.VPS_BECOME_PASSWORD }}"
